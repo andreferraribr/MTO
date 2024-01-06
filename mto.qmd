@@ -1,0 +1,142 @@
+---
+title: "MTO"
+editor: visual
+lang: "pt"
+format:
+  html:
+    code-fold: true
+    code-summary: "mostrar o código"
+    code-overflow: wrap
+execute:
+  warning: false
+  message: false
+  error: false
+  freeze: auto  # re-render only when source changes  
+---
+
+```{r bibliotecas e outros}
+#| warning: false
+#| message: false
+#| error: false
+library(readxl)
+library(tidyverse)
+library(leaflet)
+library(janitor)
+library(lubridate)
+library(tidyverse)
+library(purrr)
+library(knitr)
+library(kableExtra)
+library(DescTools)
+library(zoo)
+library(stringr)
+library(data.table)
+library(DT)
+
+
+
+# negar %in%
+`%notin%` <- Negate(`%in%`)
+
+# formato dos numeros
+myNumFmt <- as.fmt(digits=0, big.mark=".")
+
+options(scipen = 999)
+
+```
+
+## Fonte dos dados
+
+```{r importar dados}
+
+ug_nc <- read_excel("170166_nc.xlsx") %>% clean_names() 
+
+descentralizacao <- read_excel("mto_1_2.xlsx") %>% clean_names() 
+
+ug_nc <- ug_nc %>% mutate(tipo_descentralizacao = ifelse(emitente_orgao_codigo == orgao_uge_codigo, "provisao","destaque"))
+
+uniao_nd_nc <- read_excel("uniao_nd_nc.xlsx") %>% clean_names()
+
+uniao_nd_nc <- uniao_nd_nc %>% mutate(tipo_descentralizacao = ifelse(emitente_orgao_codigo == orgao_uge_codigo, "provisao","destaque"))
+```
+
+## Visão geral e ajustes dos dados
+
+Utilizamos a função glimpse para ter uma visão geral dos dados. Apresentamos abaixo os doze atributos (codigo_favorecido, nome_favorecido... valor_recebido), o tipo de cada atributo (chr, data ou double), e alguns dos resultados para cada um dos atributos.
+
+Com o glimpse, podemos observar que os nossos dados contém `r Format(NROW(ug_nc), fmt=myNumFmt)` registros.
+
+Com o glimpse, podemos observar que os nossos dados contém UOS `r Format(length(unique(descentralizacao$unidade_orcamentaria_nome)), fmt=myNumFmt)` registros.
+
+```{r}
+descentralizacao %>% filter(uo_orgao_maximo_codigo %in% c(29000,34000))  %>% group_by(uo_poder_nome_do_poder_do_orgao_da_uo ,uo_orgao_maximo_nome) %>% count() %>% select(-n)
+```
+
+```{r}
+descentralizacao %>% group_by(uo_orgao_maximo_nome, uo_orgao_nome) %>% count() %>%group_by(uo_orgao_maximo_nome) %>% count() %>% arrange(desc(n)) %>% head() %>%  kable()
+
+
+descentralizacao %>% group_by(uo_orgao_maximo_nome,uo_ug_responsavel_nome) %>% count() %>%group_by(uo_orgao_maximo_nome) %>% count() %>% arrange(desc(n)) %>% head() %>%  kable()
+
+
+descentralizacao %>% group_by(uo_orgao_maximo_nome,orgao_uge_orgao_maximo_nome) %>% count() %>%group_by(uo_orgao_maximo_nome) %>% count() %>% arrange(desc(n))%>%  head() %>%  kable()
+
+descentralizacao %>% group_by(uo_orgao_maximo_nome) %>% count(uo_ug_responsavel_codigo) %>% arrange(desc(n)) %>% head() %>% kable()
+
+
+descentralizacao %>% group_by(uo_orgao_nome) %>% count(uo_ug_responsavel_codigo) %>% arrange(desc(n)) %>% head() %>% kable()
+```
+
+```{r glimpse favorecidos}
+uniao_nd_nc %>% group_by(emitente_orgao_nome, emitente_orgao_codigo) %>% count() %>% arrange(desc(n))%>% head() %>% kable()
+
+uniao_nd_nc %>% group_by(emitente_orgao_nome, emitente_orgao_codigo)  %>% summarise(destaque_recebido = sum(destaque_recebido)/1000000) %>% arrange(desc(destaque_recebido)) %>% head()%>% kable()
+
+uniao_nd_nc %>%  filter(emitente_orgao_codigo == 26000 )%>% group_by(orgao_uge_nome) %>% summarise(destaque_recebido = sum(destaque_recebido)/1000000) %>% arrange(desc(destaque_recebido)) %>% head()%>% kable()
+
+uniao_nd_nc %>%  filter(emitente_orgao_codigo == 36000 )%>% group_by(orgao_uge_nome) %>% summarise(destaque_recebido = sum(destaque_recebido)/1000000) %>% arrange(desc(destaque_recebido)) %>% head()%>% kable()
+
+uniao_nd_nc %>%  filter(emitente_orgao_codigo == 25000 )%>% group_by(orgao_uge_nome) %>% summarise(destaque_recebido = sum(destaque_recebido)/1000000) %>% arrange(desc(destaque_recebido)) %>% head()%>% kable()
+
+
+uniao_nd_nc %>%  filter(emitente_orgao_codigo == 55001 )%>% group_by(emitente_orgao_nome,orgao_uge_nome) %>% summarise(destaque_recebido = sum(destaque_recebido)/1000000) %>% arrange(desc(destaque_recebido)) %>% head()%>% kable()
+```
+
+```{r}
+uniao_nd_nc %>% group_by(orgao_uge_nome, orgao_uge_codigo) %>% count() %>% arrange(desc(n))%>% head()%>% kable()
+
+uniao_nd_nc %>% group_by(orgao_uge_nome, orgao_uge_codigo)%>% summarise(destaque_recebido = sum(destaque_recebido)/1000000) %>% arrange(desc(destaque_recebido)) %>% head()%>% kable()
+
+uniao_nd_nc %>%  filter(orgao_uge_codigo == 26271 )%>% group_by(emitente_orgao_nome, orgao_uge_nome) %>% summarise(destaque_recebido = sum(destaque_recebido)/1000000) %>% arrange(desc(destaque_recebido)) %>% head()%>% kable()
+
+
+uniao_nd_nc %>%  filter(orgao_uge_codigo == 46000 )%>% group_by(emitente_orgao_nome, orgao_uge_nome) %>% summarise(destaque_recebido = sum(destaque_recebido)/1000000) %>% arrange(desc(destaque_recebido)) %>% head()%>% kable()
+
+
+uniao_nd_nc %>%  filter(orgao_uge_codigo == 12000 )%>% group_by(emitente_orgao_nome, orgao_uge_nome) %>% summarise(destaque_recebido = sum(destaque_recebido)/1000000) %>% arrange(desc(destaque_recebido)) %>% head()%>% kable()
+
+
+uniao_nd_nc %>%  filter(orgao_uge_codigo == 37202 )%>% group_by(emitente_orgao_nome, orgao_uge_nome) %>% summarise(destaque_recebido = sum(destaque_recebido)/1000000) %>% arrange(desc(destaque_recebido)) %>% head()%>% kable()
+
+
+
+uniao_nd_nc %>%  filter(orgao_uge_codigo == 10000 )%>% group_by(emitente_orgao_nome, orgao_uge_nome) %>% summarise(destaque_recebido = sum(destaque_recebido)/1000000) %>% arrange(desc(destaque_recebido)) %>% head()%>% kable()
+```
+
+```{r}
+
+```
+
+# Termo: Destaque de Crédito
+
+Descentralização de crédito orçamentário de uma unidade orçamentária para uma unidade orçamentária de outro órgão realizada por meio de TED.
+
+# Termo: Provisão Orçamentária
+
+```{r}
+ug_nc %>% group_by(ug_executora_nome, emitente_orgao_nome) %>% count() %>% arrange(desc(n))%>% head()
+
+ug_nc %>% group_by(tipo_descentralizacao) %>% summarise(valor = sum(provisao_recebida, na.rm = TRUE)+sum(destaque_recebido, na.rm = TRUE) )
+
+
+```
