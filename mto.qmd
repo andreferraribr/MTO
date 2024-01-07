@@ -49,9 +49,10 @@ options(scipen = 999)
 
 ```{r importar dados}
 
-ug_nc <- read_excel("170166_nc.xlsx") %>% clean_names() 
 
 descentralizacao <- read_excel("mto_1_2.xlsx") %>% clean_names() 
+
+ug_nc <- read_excel("170166_nc.xlsx") %>% clean_names() 
 
 ug_nc <- ug_nc %>% mutate(tipo_descentralizacao = ifelse(emitente_orgao_codigo == orgao_uge_codigo, "provisao","destaque"))
 
@@ -68,63 +69,79 @@ Com o glimpse, podemos observar que os nossos dados contém `r Format(NROW(ug_nc
 
 Com o glimpse, podemos observar que os nossos dados contém UOS `r Format(length(unique(descentralizacao$unidade_orcamentaria_nome)), fmt=myNumFmt)` registros.
 
+### Tipo Poder: Defensoria Pública da União e Ministério Público da União
+
 ```{r}
-descentralizacao %>% filter(uo_orgao_maximo_codigo %in% c(29000,34000))  %>% group_by(uo_poder_nome_do_poder_do_orgao_da_uo ,uo_orgao_maximo_nome) %>% count() %>% select(-n)
+descentralizacao %>% filter(uo_orgao_maximo_codigo %in% c(29000,34000))  %>% group_by(uo_poder_nome_do_poder_do_orgao_da_uo ,uo_orgao_maximo_nome) %>% count() %>% select(-n) %>% kable(col.names = c("Poder","Órgão"))
+```
+
+### Quantitativos: unidades orçamentárias, UGs responsáveis e órgãos que receberam créditos.
+
+```{r}
+descentralizacao %>% group_by(uo_orgao_maximo_nome, uo_orgao_nome) %>% count() %>%group_by(uo_orgao_maximo_nome) %>% count() %>% arrange(desc(n)) %>% head() %>%  kable(col.names = c("Órgão Máximo da UO","UOs"))
+
+
+
+
+
 ```
 
 ```{r}
-descentralizacao %>% group_by(uo_orgao_maximo_nome, uo_orgao_nome) %>% count() %>%group_by(uo_orgao_maximo_nome) %>% count() %>% arrange(desc(n)) %>% head() %>%  kable()
+descentralizacao %>% group_by(uo_orgao_maximo_nome,uo_ug_responsavel_nome) %>% count() %>%group_by(uo_orgao_maximo_nome) %>% count() %>% arrange(desc(n)) %>% head() %>%  kable(col.names = c("Órgão Máximo da UO","UGs Responsáveis"))
 
 
-descentralizacao %>% group_by(uo_orgao_maximo_nome,uo_ug_responsavel_nome) %>% count() %>%group_by(uo_orgao_maximo_nome) %>% count() %>% arrange(desc(n)) %>% head() %>%  kable()
 
-
-descentralizacao %>% group_by(uo_orgao_maximo_nome,orgao_uge_orgao_maximo_nome) %>% count() %>%group_by(uo_orgao_maximo_nome) %>% count() %>% arrange(desc(n))%>%  head() %>%  kable()
-
-descentralizacao %>% group_by(uo_orgao_maximo_nome) %>% count(uo_ug_responsavel_codigo) %>% arrange(desc(n)) %>% head() %>% kable()
-
-
-descentralizacao %>% group_by(uo_orgao_nome) %>% count(uo_ug_responsavel_codigo) %>% arrange(desc(n)) %>% head() %>% kable()
 ```
+
+```{r}
+descentralizacao %>% group_by(uo_orgao_maximo_nome,orgao_uge_orgao_maximo_nome) %>% count() %>%group_by(uo_orgao_maximo_nome) %>% count() %>% arrange(desc(n))%>%  head() %>%  kable(col.names = c("Órgão Máximo da UO","Quantidade de órgãos para os quais descentralizou crédito"))
+```
+
+### Quem descentraliza o crédito disponível (órgão emitente da NC)
 
 ```{r glimpse favorecidos}
-uniao_nd_nc %>% group_by(emitente_orgao_nome, emitente_orgao_codigo) %>% count() %>% arrange(desc(n))%>% head() %>% kable()
-
-uniao_nd_nc %>% group_by(emitente_orgao_nome, emitente_orgao_codigo)  %>% summarise(destaque_recebido = sum(destaque_recebido)/1000000) %>% arrange(desc(destaque_recebido)) %>% head()%>% kable()
-
-uniao_nd_nc %>%  filter(emitente_orgao_codigo == 26000 )%>% group_by(orgao_uge_nome) %>% summarise(destaque_recebido = sum(destaque_recebido)/1000000) %>% arrange(desc(destaque_recebido)) %>% head()%>% kable()
-
-uniao_nd_nc %>%  filter(emitente_orgao_codigo == 36000 )%>% group_by(orgao_uge_nome) %>% summarise(destaque_recebido = sum(destaque_recebido)/1000000) %>% arrange(desc(destaque_recebido)) %>% head()%>% kable()
-
-uniao_nd_nc %>%  filter(emitente_orgao_codigo == 25000 )%>% group_by(orgao_uge_nome) %>% summarise(destaque_recebido = sum(destaque_recebido)/1000000) %>% arrange(desc(destaque_recebido)) %>% head()%>% kable()
 
 
-uniao_nd_nc %>%  filter(emitente_orgao_codigo == 55001 )%>% group_by(emitente_orgao_nome,orgao_uge_nome) %>% summarise(destaque_recebido = sum(destaque_recebido)/1000000) %>% arrange(desc(destaque_recebido)) %>% head()%>% kable()
+uniao_nd_nc %>% group_by(emitente_orgao_nome, emitente_orgao_codigo)  %>% summarise(destaque_recebido = sum(destaque_recebido)/1000000) %>% arrange(desc(destaque_recebido)) %>% head()%>% kable(col.names = c("Órgão emitente da NC", "Código", "Valor"), digits = 1, format.args = list(big.mark = ".", decimal.mark = ",") )
+
+
 ```
 
 ```{r}
-uniao_nd_nc %>% group_by(orgao_uge_nome, orgao_uge_codigo) %>% count() %>% arrange(desc(n))%>% head()%>% kable()
+uniao_nd_nc %>%  filter(emitente_orgao_codigo == 26000 )%>% group_by(emitente_orgao_nome, orgao_uge_nome) %>% summarise(destaque_recebido = sum(destaque_recebido)/1000000) %>% arrange(desc(destaque_recebido)) %>% head()%>% kable(col.names = c("De", "Para", "Valor"), digits = 1, format.args = list(big.mark = ".", decimal.mark = ",") )
 
-uniao_nd_nc %>% group_by(orgao_uge_nome, orgao_uge_codigo)%>% summarise(destaque_recebido = sum(destaque_recebido)/1000000) %>% arrange(desc(destaque_recebido)) %>% head()%>% kable()
+uniao_nd_nc %>%  filter(emitente_orgao_codigo == 36000 )%>% group_by(emitente_orgao_nome,orgao_uge_nome) %>% summarise(destaque_recebido = sum(destaque_recebido)/1000000) %>% arrange(desc(destaque_recebido)) %>% head() %>% kable(col.names = c("De", "Para", "Valor"), digits = 1, format.args = list(big.mark = ".", decimal.mark = ",") )
 
-uniao_nd_nc %>%  filter(orgao_uge_codigo == 26271 )%>% group_by(emitente_orgao_nome, orgao_uge_nome) %>% summarise(destaque_recebido = sum(destaque_recebido)/1000000) %>% arrange(desc(destaque_recebido)) %>% head()%>% kable()
+uniao_nd_nc %>%  filter(emitente_orgao_codigo == 25000 )%>% group_by(emitente_orgao_nome,orgao_uge_nome) %>% summarise(destaque_recebido = sum(destaque_recebido)/1000000) %>% arrange(desc(destaque_recebido)) %>% head()%>% kable(col.names = c("De", "Para", "Valor"), digits = 1, format.args = list(big.mark = ".", decimal.mark = ",") )
 
-
-uniao_nd_nc %>%  filter(orgao_uge_codigo == 46000 )%>% group_by(emitente_orgao_nome, orgao_uge_nome) %>% summarise(destaque_recebido = sum(destaque_recebido)/1000000) %>% arrange(desc(destaque_recebido)) %>% head()%>% kable()
-
-
-uniao_nd_nc %>%  filter(orgao_uge_codigo == 12000 )%>% group_by(emitente_orgao_nome, orgao_uge_nome) %>% summarise(destaque_recebido = sum(destaque_recebido)/1000000) %>% arrange(desc(destaque_recebido)) %>% head()%>% kable()
-
-
-uniao_nd_nc %>%  filter(orgao_uge_codigo == 37202 )%>% group_by(emitente_orgao_nome, orgao_uge_nome) %>% summarise(destaque_recebido = sum(destaque_recebido)/1000000) %>% arrange(desc(destaque_recebido)) %>% head()%>% kable()
-
-
-
-uniao_nd_nc %>%  filter(orgao_uge_codigo == 10000 )%>% group_by(emitente_orgao_nome, orgao_uge_nome) %>% summarise(destaque_recebido = sum(destaque_recebido)/1000000) %>% arrange(desc(destaque_recebido)) %>% head()%>% kable()
+uniao_nd_nc %>%  filter(emitente_orgao_codigo == 55001 )%>% group_by(emitente_orgao_nome,orgao_uge_nome) %>% summarise(destaque_recebido = sum(destaque_recebido)/1000000) %>% arrange(desc(destaque_recebido)) %>% head()%>% kable(col.names = c("De", "Para", "Valor"), digits = 1, format.args = list(big.mark = ".", decimal.mark = ",") )
 ```
+
+### Quem recebe o crédito disponível (órgão da UG executora)
 
 ```{r}
 
+
+uniao_nd_nc %>% group_by(orgao_uge_nome, orgao_uge_codigo)%>% summarise(destaque_recebido = sum(destaque_recebido)/1000000) %>% arrange(desc(destaque_recebido)) %>% head()%>% kable(col.names = c("Órgão UGE (beneficiário da NC)", "Código", "Valor"), digits = 1, format.args = list(big.mark = ".", decimal.mark = ",") )
+
+
+```
+
+```{r}
+uniao_nd_nc %>%  filter(orgao_uge_codigo == 26271 )%>% group_by(emitente_orgao_nome, orgao_uge_nome) %>% summarise(destaque_recebido = sum(destaque_recebido)/1000000) %>% arrange(desc(destaque_recebido)) %>% head()%>% kable(col.names = c("De", "Para", "Valor"), digits = 1, format.args = list(big.mark = ".", decimal.mark = ",") )
+
+
+uniao_nd_nc %>%  filter(orgao_uge_codigo == 46000 )%>% group_by(emitente_orgao_nome, orgao_uge_nome) %>% summarise(destaque_recebido = sum(destaque_recebido)/1000000) %>% arrange(desc(destaque_recebido)) %>% head()%>% kable(col.names = c("De", "Para", "Valor"), digits = 1, format.args = list(big.mark = ".", decimal.mark = ",") )
+
+
+uniao_nd_nc %>%  filter(orgao_uge_codigo == 12000 )%>% group_by(emitente_orgao_nome, orgao_uge_nome) %>% summarise(destaque_recebido = sum(destaque_recebido)/1000000) %>% arrange(desc(destaque_recebido)) %>% head()%>% kable(col.names = c("De", "Para", "Valor"), digits = 1, format.args = list(big.mark = ".", decimal.mark = ",") )
+
+
+uniao_nd_nc %>%  filter(orgao_uge_codigo == 37202 )%>% group_by(emitente_orgao_nome, orgao_uge_nome) %>% summarise(destaque_recebido = sum(destaque_recebido)/1000000) %>% arrange(desc(destaque_recebido)) %>% head()%>% kable(col.names = c("De", "Para", "Valor"), digits = 1, format.args = list(big.mark = ".", decimal.mark = ",") )
+
+
+
+uniao_nd_nc %>%  filter(orgao_uge_codigo == 10000 )%>% group_by(emitente_orgao_nome, orgao_uge_nome) %>% summarise(destaque_recebido = sum(destaque_recebido)/1000000) %>% arrange(desc(destaque_recebido)) %>% head()%>% kable(col.names = c("De", "Para", "Valor"), digits = 1, format.args = list(big.mark = ".", decimal.mark = ",") )
 ```
 
 # Termo: Destaque de Crédito
@@ -134,9 +151,9 @@ Descentralização de crédito orçamentário de uma unidade orçamentária para
 # Termo: Provisão Orçamentária
 
 ```{r}
-ug_nc %>% group_by(ug_executora_nome, emitente_orgao_nome) %>% count() %>% arrange(desc(n))%>% head()
+ug_nc %>% group_by( emitente_orgao_nome,ug_executora_nome) %>% summarise(valor = (sum(provisao_recebida, na.rm = TRUE)+sum(destaque_recebido, na.rm = TRUE) )/1000) %>% arrange(desc(valor))%>% head()%>% kable(col.names = c("De", "Para", "Valor"), digits = 1, format.args = list(big.mark = ".", decimal.mark = ",") )
 
-ug_nc %>% group_by(tipo_descentralizacao) %>% summarise(valor = sum(provisao_recebida, na.rm = TRUE)+sum(destaque_recebido, na.rm = TRUE) )
+ug_nc %>% group_by(tipo_descentralizacao)%>% summarise(valor = (sum(provisao_recebida, na.rm = TRUE)+sum(destaque_recebido, na.rm = TRUE) )/1000) %>% kable(digits = 1, format.args = list(big.mark = ".", decimal.mark = ",") )
 
 
 ```
